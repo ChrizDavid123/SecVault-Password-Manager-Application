@@ -8,6 +8,7 @@
 from sqlcipher3 import dbapi2 as sqlite
 from tabulate import tabulate
 from datetime import datetime
+from authentication import verify_key
 
 def initialize_database(master_password):
     """Initializes and returns the connection to the encrypted database."""
@@ -16,10 +17,10 @@ def initialize_database(master_password):
         cursor = conn.cursor()
         
         # Set the encryption key
-        cursor.execute(f"PRAGMA key = '{master_password}'")
+        cursor.execute(f"PRAGMA key = \"x'{master_password.hex()}'\";")
         
         # Verify the key works by attempting a simple operation
-        cursor.execute("SELECT count(*) FROM sqlite_master;")
+        # cursor.execute("SELECT count(*) FROM sqlite_master;") # There is already verification happening from authentication.py - joms
 
         # Table 1: The Vault
         cursor.execute('''
@@ -92,8 +93,10 @@ def show_logs_table(conn):
 # ---------- CODE TO TEST IF IT WORKS ----------
 # ----------------------------------------------
 if __name__ == "__main__":
-    m_pass = input("Enter Master Password to open SecVault: ")
-    db = initialize_database(m_pass)
+    user_input = input("Enter Master Password to open SecVault: ")
+    master_password = verify_key(user_input)
+
+    db = initialize_database(master_password)
 
     if db:
         print("\n---------- SECVAULT ----------\n")

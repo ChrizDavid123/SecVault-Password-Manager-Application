@@ -26,9 +26,9 @@ def initialize_database(master_password):
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS vault (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                service_name TEXT NOT NULL,
+                service TEXT NOT NULL,
                 username TEXT NOT NULL,
-                encrypted_password TEXT NOT NULL,
+                password TEXT NOT NULL,
                 category TEXT
             )
         ''')
@@ -57,14 +57,19 @@ def log_event(conn, event_type):
     cursor.execute("INSERT INTO access_logs (event_type, timestamp) VALUES (?, ?)", (event_type, now))
     conn.commit()
 
-def save_entry(conn, service, user, pwd, cat):
+def save_entry(conn):
     """Saves a new entry based on user input."""
+    category = input("Category: ").strip()
+    service = input("Service: ").strip()
+    username = input("Username: ").strip()
+    password = input("Password: ").strip()
+
     try:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO vault (service_name, username, encrypted_password, category) 
+            INSERT INTO vault (service, username, password, category) 
             VALUES (?, ?, ?, ?)
-        ''', (service, user, pwd, cat))
+        ''', (service, username, password, category))
         conn.commit()
         print(f"Securely saved {service} to the vault.")
     except Exception as e:
@@ -72,10 +77,10 @@ def save_entry(conn, service, user, pwd, cat):
 
 def show_vault_table(conn):
     cursor = conn.cursor()
-    cursor.execute("SELECT id, category, service_name, username, encrypted_password FROM vault")
+    cursor.execute("SELECT id, category, service, username, password FROM vault")
     rows = cursor.fetchall()
 
-    headers = ["ID", "Category", "Service", "Username", "Password (Encrypted)"]
+    headers = ["ID", "Category", "Service", "Username", "Password"]
     print("\n---------- SECURE CREDENTIALS ----------")
     print(tabulate(rows, headers=headers, tablefmt="fancy_grid"))
 
@@ -105,22 +110,16 @@ if __name__ == "__main__":
             print("\n[A] Add Password | [V] View Vault | [L] View Logs | [Q] Quit")
             mode = input("Select an option: ").upper()
 
-            if mode == 'A':
-                c = input("Category: ")
-                s = input("Service: ")
-                u = input("Username: ")
-                p = input("Password: ")
-                save_entry(db, s, u, p, c)
-            
-            elif mode == 'V':
-                show_vault_table(db)
-
-            elif mode == 'L':
-                show_logs_table(db)
-            
-            elif mode == 'Q':
-                log_event(db, "LOGOUT")
-                print("\n---------- Vault Locked. Closing Application... ----------")
-                break
+            match mode:
+                case 'A':
+                    save_entry(db)
+                case 'V':
+                    show_vault_table(db)
+                case 'L':
+                    show_logs_table(db)
+                case 'Q':
+                    log_event(db, "LOGOUT")
+                    print("\n---------- Vault Locked. Closing Application... ----------")
+                    break
 
         db.close()

@@ -19,25 +19,36 @@ def derive_key(password, salt):
 # Store key in auth_store.json
 def store_key(password, salt):
     key = derive_key(password, salt)
-    auth_store.write_text(dumps({
-        "hash": b64encode(key).decode(),
-        "salt": b64encode(salt).decode()
-    }))
+    data = loads(auth_store.read_text()) if auth_store.exists() and auth_store.stat().st_size else {}
+    data["hash"] = b64encode(key).decode()
+    data["salt"] = b64encode(salt).decode()
+
+    auth_store.write_text(dumps(data, indent=4))
     return key # Return key to decrypt database
 
 # Check if the key to decrypt database is correct
 def verify_key(password):
-    # If auth_store.json does not exist
-    if not auth_store.exists():
-        derived_key = store_key(password, salt=token_bytes(16))
-    else:
-        data = loads(auth_store.read_text())
-        derived_key = derive_key(password, b64decode(data["salt"]))
+    data = loads(auth_store.read_text())
+    derived_key = derive_key(password, b64decode(data["salt"]))
 
-        # Check if entered master password is correct
-        try:
-            compare_digest(derived_key, b64decode(data["hash"]))
-        except ValueError:
-            print("Uh oh! Masterpassword is wrong") # Add to GUI as error popup
+    # Check if entered master password is correct
+    try:
+        compare_digest(derived_key, b64decode(data["hash"]))
+    except ValueError:
+        print("Uh oh! Masterpassword is wrong") # Add to GUI as error popup
         
     return derived_key
+
+# Create master password
+def create_master_password():
+    password = input("Create a Master Password: ").strip()
+    key = store_key(password, salt=token_bytes(16))
+    return key
+
+# Change master password
+def change_master_password():
+    data = loads(auth_store.read_text())
+    for key in list(data.keys()):
+        del data[key]
+    key = create_master_password()
+    return key

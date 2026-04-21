@@ -5,19 +5,21 @@
 # -----------------------------------------------
 # ---------- MAIN SQL DATABASE PROGRAM ----------
 # -----------------------------------------------
+from json import dumps, loads
+from pathlib import Path
 from sqlcipher3 import dbapi2 as sqlite
 from tabulate import tabulate
 from datetime import datetime
-from authentication import verify_key
+from authentication import verify_key, create_master_password, change_master_password
 
-def initialize_database(master_password):
+def initialize_database(key):
     """Initializes and returns the connection to the encrypted database."""
     try:
         conn = sqlite.connect('SecVault.db')
         cursor = conn.cursor()
         
         # Set the encryption key
-        cursor.execute(f"PRAGMA key = \"x'{master_password.hex()}'\";")
+        cursor.execute(f"PRAGMA key = \"x'{key.hex()}'\";")
         
         # Verify the key works by attempting a simple operation
         # cursor.execute("SELECT count(*) FROM sqlite_master;") # There is already verification happening from authentication.py - joms
@@ -93,33 +95,57 @@ def show_logs_table(conn):
     print("\n---------- SECURITY ACCESS LOGS ----------")
     print(tabulate(rows, headers=headers, tablefmt="fancy_grid"))
 
+def change_key(conn, key):
+    cursor = conn.cursor()
+    # Change PRAGMA key
+    cursor.execute(f"PRAGMA rekey = \"x'{key.hex()}'\";")
+    conn.commit()
 
 # ----------------------------------------------
 # ---------- CODE TO TEST IF IT WORKS ----------
 # ----------------------------------------------
-if __name__ == "__main__":
-    user_input = input("Enter Master Password to open SecVault: ")
-    master_password = verify_key(user_input)
+def login():
+    auth_store = Path("auth_store.json")
+    data = {} if not auth_store.exists() or not auth_store.stat().st_size else loads(auth_store.read_text())
 
-    db = initialize_database(master_password)
+    if all(data.get(key) is None for key in ["hash", "salt"]):
+        create_master_password()
+    
+    master_password = input("Enter Master Password to open SecVault: ").strip()
+    key = verify_key(master_password)
 
-    if db:
+    db_conn = initialize_database(key)
+    return db_conn
+
+def main(db_conn):
+    if db_conn:
         print("\n---------- SECVAULT ----------\n")
 
         while True: 
-            print("\n[A] Add Password | [V] View Vault | [L] View Logs | [Q] Quit")
+            print("\n[A] Add Password | [V] View Vault | [L] View Logs | [M] Change Master Password | [Q] Quit")
             mode = input("Select an option: ").upper()
 
             match mode:
                 case 'A':
-                    save_entry(db)
+                    save_entry(db_conn)
                 case 'V':
-                    show_vault_table(db)
+                    show_vault_table(db_conn)
                 case 'L':
-                    show_logs_table(db)
+                    show_logs_table(db_conn)
+                case 'M':
+                    new_key = change_master_password()
+                    change_key(db_conn, new_key)
+                    log_event(db_conn, "LOGOUT")
+                    db_conn.close()
+                    break
                 case 'Q':
-                    log_event(db, "LOGOUT")
+                    log_event(db_conn, "LOGOUT")
                     print("\n---------- Vault Locked. Closing Application... ----------")
                     break
 
-        db.close()
+        db_conn.close()
+
+if __name__ == "__main__":
+    while True:
+        db_conn = login()
+        main(db_conn)

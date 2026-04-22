@@ -5,12 +5,11 @@
 # -----------------------------------------------
 # ---------- MAIN SQL DATABASE PROGRAM ----------
 # -----------------------------------------------
-from json import dumps, loads
 from pathlib import Path
 from sqlcipher3 import dbapi2 as sqlite
 from tabulate import tabulate
 from datetime import datetime
-from authentication import verify_key, create_master_password, change_master_password
+from authentication import verify_key, set_master_password
 
 def initialize_database(key):
     """Initializes and returns the connection to the encrypted database."""
@@ -20,9 +19,6 @@ def initialize_database(key):
         
         # Set the encryption key
         cursor.execute(f"PRAGMA key = \"x'{key.hex()}'\";")
-        
-        # Verify the key works by attempting a simple operation
-        # cursor.execute("SELECT count(*) FROM sqlite_master;") # There is already verification happening from authentication.py - joms
 
         # Table 1: The Vault
         cursor.execute('''
@@ -95,7 +91,8 @@ def show_logs_table(conn):
     print("\n---------- SECURITY ACCESS LOGS ----------")
     print(tabulate(rows, headers=headers, tablefmt="fancy_grid"))
 
-def change_key(conn, key):
+def change_key(conn):
+    key = set_master_password()
     cursor = conn.cursor()
     # Change PRAGMA key
     cursor.execute(f"PRAGMA rekey = \"x'{key.hex()}'\";")
@@ -104,15 +101,16 @@ def change_key(conn, key):
 # ----------------------------------------------
 # ---------- CODE TO TEST IF IT WORKS ----------
 # ----------------------------------------------
+# Code below will be adapted to the front-end design
 def login():
     auth_store = Path("auth_store.json")
-    data = {} if not auth_store.exists() or not auth_store.stat().st_size else loads(auth_store.read_text())
 
-    if all(data.get(key) is None for key in ["hash", "salt"]):
-        create_master_password()
-    
-    master_password = input("Enter Master Password to open SecVault: ").strip()
-    key = verify_key(master_password)
+    # User sets master password if hash and salt values are not found in auth_store.json
+    if not auth_store.exists() or not auth_store.stat().st_size:
+        key = set_master_password()
+    else:
+        master_password = input("Enter master password to open SecVault: ").strip()
+        key = verify_key(master_password)
 
     db_conn = initialize_database(key)
     return db_conn
@@ -133,10 +131,8 @@ def main(db_conn):
                 case 'L':
                     show_logs_table(db_conn)
                 case 'M':
-                    new_key = change_master_password()
-                    change_key(db_conn, new_key)
+                    change_key(db_conn)
                     log_event(db_conn, "LOGOUT")
-                    db_conn.close()
                     break
                 case 'Q':
                     log_event(db_conn, "LOGOUT")

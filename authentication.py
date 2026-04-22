@@ -8,6 +8,7 @@ from argon2.low_level import hash_secret_raw, Type
 # Salt and hash values are stored here for verification
 auth_store = Path("auth_store.json")
 
+
 # Derive key from master password
 def derive_key(password, salt):
     return hash_secret_raw(
@@ -16,39 +17,42 @@ def derive_key(password, salt):
         parallelism=4, hash_len=32, type=Type.ID
     )
 
+
 # Store key in auth_store.json
 def store_key(password, salt):
+    # Derive key from master password
     key = derive_key(password, salt)
-    data = loads(auth_store.read_text()) if auth_store.exists() and auth_store.stat().st_size else {}
+
+    # Check if there is data in auth_store.json
+    if auth_store.exists() and auth_store.stat().st_size:
+        data = loads(auth_store.read_text())
+    else:
+        data = {}
+    
+    # Write data into auth_store.json
     data["hash"] = b64encode(key).decode()
     data["salt"] = b64encode(salt).decode()
-
     auth_store.write_text(dumps(data, indent=4))
-    return key # Return key to decrypt database
 
-# Check if the key to decrypt database is correct
-def verify_key(password):
-    data = loads(auth_store.read_text())
-    derived_key = derive_key(password, b64decode(data["salt"]))
-
-    # Check if entered master password is correct
-    try:
-        compare_digest(derived_key, b64decode(data["hash"]))
-    except ValueError:
-        print("Uh oh! Masterpassword is wrong") # Add to GUI as error popup
-        
-    return derived_key
-
-# Create master password
-def create_master_password():
-    password = input("Create a Master Password: ").strip()
-    key = store_key(password, salt=token_bytes(16))
+    # Return key to decrypt database
     return key
 
-# Change master password
-def change_master_password():
+
+# Check if the key to decrypt database is correct
+def verify_key(entered_password):
     data = loads(auth_store.read_text())
-    for key in list(data.keys()):
-        del data[key]
-    key = create_master_password()
+    candidate_key = derive_key(entered_password, b64decode(data["salt"])) # Derive entered password
+
+    # Compare candidate key derived from entered password against stored hash (the master password set by the user)
+    try:
+        compare_digest(candidate_key, b64decode(data["hash"]))
+        return candidate_key
+    except ValueError:
+        print("Uh oh! Masterpassword is wrong") # Add to GUI as error popup
+
+
+# Set master password
+def set_master_password():
+    password = input("Create a master password: ").strip()
+    key = store_key(password, salt=token_bytes(32))
     return key

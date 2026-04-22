@@ -1,4 +1,4 @@
-# Current Master Password: sosorry
+# Current Master Password: ninja
 # To change master password, delete the SecVault.db file first, otherwise whatever password you input, it wont work!
 
 
@@ -56,8 +56,20 @@ def log_event(conn, event_type):
     conn.commit()
 
 def save_entry(conn):
-    """Saves a new entry based on user input."""
-    category = input("Category: ").strip()
+    """Saves a new entry with a standardized category."""
+    categories = {
+        "1": "Work",
+        "2": "Personal",
+        "3": "Wifi"
+    }
+
+    print("\n--- Select Category ---")
+    for key, value in categories.items():
+        print(f"[{key}] {value}")
+
+    cat_choice = input("Select category (1-3): ").strip()
+    category = categories.get(cat_choice, "Personal")
+
     service = input("Service: ").strip()
     username = input("Username: ").strip()
     password = input("Password: ").strip()
@@ -69,17 +81,33 @@ def save_entry(conn):
             VALUES (?, ?, ?, ?)
         ''', (service, username, password, category))
         conn.commit()
-        print(f"Securely saved {service} to the vault.")
+        print(f"\n[!] Securely saved {service} under {category}.")
     except Exception as e:
         print(f"Failed to save: {e}")
 
 def show_vault_table(conn):
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, category, service, username, password FROM vault")
-    rows = cursor.fetchall()
+    print("\n---------- View Options ----------")
+    print("[1] Work | [2] Personal | [3] WiFi | [4] All Passwords")
+    choice = input("Selection: ").strip()
 
+    filter_map = {"1": "Work", "2": "Personal", "3": "WiFi"}
+
+    cursor = conn.cursor()
+
+    if choice == "4":
+        cursor.execute("SELECT id, category, service, username, password FROM vault")
+        title = "ALL REGISTERED PASSWORDS"
+    elif choice in filter_map:
+        selected = filter_map[choice]
+        cursor.execute("SELECT id, category, service, username, password FROM vault WHERE category = ?", (selected,))
+        title = f"{selected.upper()} PASSWORDS"
+    else: 
+        print("Invalid selection. Returning to main menu.")
+        return 
+    
+    rows = cursor.fetchall()
     headers = ["ID", "Category", "Service", "Username", "Password"]
-    print("\n---------- SECURE CREDENTIALS ----------")
+    print("\n---------- {title} ----------")
     print(tabulate(rows, headers=headers, tablefmt="fancy_grid"))
 
 def show_logs_table(conn):

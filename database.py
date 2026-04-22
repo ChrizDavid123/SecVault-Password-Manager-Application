@@ -126,6 +126,34 @@ def change_key(conn):
     cursor.execute(f"PRAGMA rekey = \"x'{key.hex()}'\";")
     conn.commit()
 
+def delete_entry(conn):
+    """Removes a specific credential by ID."""
+    target_id = input("Enter the ID of the entry to delete: ")
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM vault WHERE id = ?", (target_id,))
+        conn.commit()
+        if cursor.rowcount > 0:
+            print(f"Entry {target_id} deleted successfully.")
+        else:
+            print("ID not found.")
+    except Exception as e:
+        print(f"Error: {e}")
+
+def update_entry(conn):
+    """Updates the password for a specific service."""
+    target_id = input("Enter the ID of the entry to update: ")
+    new_password = input("Enter new password: ")
+    try:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE vault SET password = ? WHERE id = ?", (new_password, target_id))
+        conn.commit()
+        if cursor.rowcount > 0:
+            print(f"Entry {target_id} updated.")
+        else:
+            print("ID not found.")
+    except Exception as e:
+        print(f"Error: {e}")
 # ----------------------------------------------
 # ---------- CODE TO TEST IF IT WORKS ----------
 # ----------------------------------------------
@@ -148,7 +176,7 @@ def main(db_conn):
         print("\n---------- SECVAULT ----------\n")
 
         while True: 
-            print("\n[A] Add Password | [V] View Vault | [L] View Logs | [M] Change Master Password | [Q] Quit")
+            print("\n[A] Add | [V] View | [U] Update | [D] Delete | [M] Change Master | [Q] Quit")
             mode = input("Select an option: ").upper()
 
             match mode:
@@ -156,15 +184,12 @@ def main(db_conn):
                     save_entry(db_conn)
                 case 'V':
                     show_vault_table(db_conn)
-                case 'L':
-                    show_logs_table(db_conn)
+                case 'U':
+                    update_entry(db_conn)
+                case 'D':
+                    delete_entry(db_conn)
                 case 'M':
                     change_key(db_conn)
-                    log_event(db_conn, "LOGOUT")
-                    break
-                case 'Q':
-                    log_event(db_conn, "LOGOUT")
-                    print("\n---------- Vault Locked. Closing Application... ----------")
                     break
 
         db_conn.close()

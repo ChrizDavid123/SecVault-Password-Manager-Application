@@ -91,11 +91,11 @@ class SecVaultApp(ctk.CTk):
                 self.setup_error.configure(text="Passwords do not match!")
                 return
             
-            authentication.store_key(p1, token_bytes(32))
+            store_key(password)
             messagebox.showinfo("Success", "Master password set! Please login.")
             self.show_lock_window()
 
-        ctk.CTkButton(setup_frame, text="Save", corner_radius=20, command=save_master).pack(pady=30)
+        ctk.CTkButton(setup_frame, text="Save", corner_radius=20, command=set_master_password).pack(pady=30)
 
     # --- SCREEN 1: LOCK WINDOW (Login) ---
     def show_lock_window(self):
@@ -214,15 +214,16 @@ class SecVaultApp(ctk.CTk):
         self.scroll_frame.pack(fill="both", expand=True, padx=10)
 
         
-        view_btn = ctk.CTkButton(bar, text="👁️", width=25, height=25, fg_color="transparent", 
+        view_btn = ctk.CTkButton(top_bar, text="👁️", width=25, height=25, fg_color="transparent", 
                                 text_color="#318ba2", font=("Arial", 12))
         view_btn.pack(side="right", padx=2)
-
-        # Options Menu (The Three Dots)
-        dots_btn = ctk.CTkButton(row_container, text="⋮", width=20, fg_color="transparent", 
-                                text_color="black", font=("Arial", 20),
-                                command=lambda: self.show_options_menu(data))
-        dots_btn.pack(side="right")
+        
+        # TO BE REVIEWED
+        # # Options Menu (The Three Dots)
+        # dots_btn = ctk.CTkButton(row_container, text="⋮", width=20, fg_color="transparent", 
+        #                         text_color="black", font=("Arial", 20),
+        #                         command=lambda: self.show_options_menu(data))
+        # dots_btn.pack(side="right")
 
     # --- NEW: UPDATE/DELETE POPUP (The "Changes View") ---
     def show_options_menu(self, data):

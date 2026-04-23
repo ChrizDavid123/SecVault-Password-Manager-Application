@@ -151,9 +151,11 @@ class SecVaultApp(ctk.CTk):
                                command=lambda c=category: self.load_vault_data(c))
             btn.pack(pady=10, padx=20, fill="x")
 
-        add_btn = ctk.CTkButton(self.sidebar, text="+ Add Entry", font=("Arial", 20), width=40, 
+        # Changes made to this section
+        add_btn = ctk.CTkButton(self.sidebar, text="+ Add Entry", 
+                                # font=("Arial", 20), width=40, # Test
                                command=self.show_add_password_window)
-        add_btn.pack(pady=20)
+        add_btn.pack(pady=50) 
 
         self.content_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
         self.content_frame.pack(side="right", fill="both", expand=True, padx=20, pady=20)

@@ -17,7 +17,9 @@ class SecVaultApp(ctk.CTk):
         super().__init__()
 
         self.title("SecVault")
-        self.geometry("1100x700")
+        self.geometry("1100x700")fdekfgbnefkjgnfgfgoghgdw
+        khgiwghdughwguiwhgugh
+        wuihewguiwehguiewhg
         
         icon_path = os.path.join(os.path.dirname(__file__), "AppLogo.png")
         try:

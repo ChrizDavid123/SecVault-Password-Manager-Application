@@ -165,9 +165,9 @@ class SecVaultApp(ctk.CTk):
                 self.show_main_window()
             else:
                 messagebox.showerror("Access Denied", "Incorrect Master Password")
-        except Exception as e:
+        except Exception as error:
             # This is where the auth_store.json error used to happen
-            messagebox.showerror("Error", f"Login failed: {e}")
+            messagebox.showerror("Error", f"Login failed: {error}")
 
     # --- SCREEN 2: MAIN WINDOW (The Vault) ---
     def show_main_window(self):

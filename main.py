@@ -5,9 +5,8 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog
 from PIL import Image
 import database
-import authentication
+from authentication import verify_key, store_key
 import passforge
-from secrets import token_bytes
 
 # Initialize the window theme
 ctk.set_appearance_mode("light") 
@@ -82,58 +81,21 @@ class SecVaultApp(ctk.CTk):
         self.setup_error = ctk.CTkLabel(setup_frame, text="", text_color="red")
         self.setup_error.pack()
 
-        def save_master():
-            p1 = self.new_pw.get()
-            p2 = self.confirm_pw.get()
-            if len(p1) < 8:
+        def set_master_password(): # Changed
+            password = self.new_pw.get()
+            password_confirm = self.confirm_pw.get()
+            if len(password) < 8:
                 self.setup_error.configure(text="Your password must be at least 8 characters!")
                 return
-            if p1 != p2:
+            if password != password_confirm:
                 self.setup_error.configure(text="Passwords do not match!")
                 return
-
-            messagebox.showinfo("Success", "Master password set!")
+            
+            authentication.store_key(p1, token_bytes(32))
+            messagebox.showinfo("Success", "Master password set! Please login.")
             self.show_lock_window()
 
-        ctk.CTkButton(setup_frame, text="Save", corner_radius=20, width=150, height=40,
-                     fg_color="#3B8ED0", command=save_master).pack(pady=20)
-
-    def new_method1(self, setup_frame):
-        ctk.CTkLabel(setup_frame, text="Set Up Master Password", font=("Helvetica", 24, "bold"), text_color="black").pack(pady=20)
-
-        # --- 1. MAKE PASSWORD BAR ---
-        p1_container = ctk.CTkFrame(setup_frame, fg_color="white", corner_radius=10, width=350, height=40)
-        p1_container.pack(pady=10)
-        p1_container.pack_propagate(False)
-
-        self.new_pw = ctk.CTkEntry(p1_container, placeholder_text="Make Password", show="*", 
-                                   border_width=0, fg_color="white", text_color="black")
-        self.new_pw.pack(side="left", padx=(10, 0), fill="x", expand=True)
-
-        def toggle_p1():
-            if self.new_pw.cget("show") == "*":
-                self.new_pw.configure(show="")
-                eye_p1.configure(text="🔒")
-            else:
-                self.new_pw.configure(show="*")
-                eye_p1.configure(text="👁️")
-
-        eye_p1 = ctk.CTkButton(p1_container, text="👁️", width=30, height=30, fg_color="transparent", 
-                               text_color="#318ba2", font=("Arial", 18), command=toggle_p1)
-        eye_p1.pack(side="right", padx=5)
-
-        p2_container = ctk.CTkFrame(setup_frame, fg_color="white", corner_radius=10, width=350, height=40)
-        p2_container.pack(pady=10)
-        p2_container.pack_propagate(False)
-
-        self.confirm_pw = ctk.CTkEntry(p2_container, placeholder_text="Confirm Password", show="*", 
-                                       border_width=0, fg_color="white", text_color="black")
-        self.confirm_pw.pack(side="left", padx=(10, 0), fill="x", expand=True)
-        return p2_container
-
-    def new_method(self, logo_img):
-        outside_logo = ctk.CTkLabel(self.main_container, image=logo_img, text="")
-        return outside_logo
+        ctk.CTkButton(setup_frame, text="Save", corner_radius=20, command=save_master).pack(pady=30)
 
     # --- SCREEN 1: LOCK WINDOW (Login) ---
     def show_lock_window(self):
@@ -191,13 +153,13 @@ class SecVaultApp(ctk.CTk):
         
 
     def handle_login(self):
-        pwd = self.pw_entry.get()
-        if not pwd:
+        password = self.pw_entry.get()
+        if not password:
             messagebox.showwarning("Input Error", "Please enter your master password.")
             return
 
         try:
-            self.current_user_key = authentication.verify_key(pwd)
+            self.current_user_key = verify_key(password) # Changed
             if self.current_user_key:
                 self.db_conn = database.initialize_database(self.current_user_key)
                 self.show_main_window()
@@ -216,21 +178,14 @@ class SecVaultApp(ctk.CTk):
         self.sidebar.pack(side="left", fill="y", padx=10, pady=10)
         self.sidebar.pack_propagate(False)
 
-        # Categories
         for cat in ["All", "Work", "Personal", "Wifi"]:
-            # Highlight 'All' by default to match design
-            bg = "#4a6291" if cat == "All" else "black"
-            btn = ctk.CTkButton(self.sidebar, text=cat, fg_color=bg, text_color="white",
-                                corner_radius=15, height=35, font=("Helvetica", 14, "bold"),
-                                command=lambda c=cat: self.load_vault_data(c))
-            btn.pack(pady=10, padx=25, fill="x")
+            btn = ctk.CTkButton(self.sidebar, text=cat, fg_color="#3B8ED0", corner_radius=10,
+                               command=lambda c=cat: self.load_vault_data(c))
+            btn.pack(pady=10, padx=20, fill="x")
 
-        # Add Button (Circular)
-        add_btn = ctk.CTkButton(self.sidebar, text="+", font=("Arial", 24), width=50, height=50,
-                               fg_color="transparent", border_width=2, border_color="black",
-                               text_color="black", corner_radius=25,
+        add_btn = ctk.CTkButton(self.sidebar, text="+", font=("Arial", 20), width=40, 
                                command=self.show_add_password_window)
-        add_btn.pack(pady=20)
+        add_btn.pack(pady=50) 
 
         # LOCK VAULT BUTTON (Bottom of Sidebar)
         lock_btn = ctk.CTkButton(self.sidebar, text="↪ Lock Vault", fg_color="transparent", 
@@ -276,16 +231,16 @@ class SecVaultApp(ctk.CTk):
         opt_win.geometry("250x150")
         opt_win.attributes("-topmost", True)
 
-        def update_p():
-            new_p = simpledialog.askstring("Update", f"New password for {data[1]}:")
-            if new_p:
+        def update_password_entry():
+            new_password = simpledialog.askstring("Update", f"New password for {data[1]}:")
+            if new_password:
                 cursor = self.db_conn.cursor()
-                cursor.execute("UPDATE vault SET password = ? WHERE id = ?", (new_p, data[0]))
+                cursor.execute("UPDATE vault SET password = ? WHERE id = ?", (new_password, data[0]))
                 self.db_conn.commit()
                 opt_win.destroy()
                 self.load_vault_data("All")
 
-        def delete_p():
+        def delete_password_entry():
             if messagebox.askyesno("Confirm", "Delete this entry?"):
                 cursor = self.db_conn.cursor()
                 cursor.execute("DELETE FROM vault WHERE id = ?", (data[0],))
@@ -293,8 +248,8 @@ class SecVaultApp(ctk.CTk):
                 opt_win.destroy()
                 self.load_vault_data("All")
 
-        ctk.CTkButton(opt_win, text="Change/Update", command=update_p).pack(pady=10)
-        ctk.CTkButton(opt_win, text="Delete", fg_color="red", command=delete_p).pack(pady=10)
+        ctk.CTkButton(opt_win, text="Change/Update", command=update_password_entry).pack(pady=10)
+        ctk.CTkButton(opt_win, text="Delete", fg_color="red", command=delete_password_entry).pack(pady=10)
 
     # --- SCREEN 3: ADD WINDOW ---
     def show_add_password_window(self):
@@ -320,7 +275,7 @@ class SecVaultApp(ctk.CTk):
         cat_var = ctk.StringVar(value="Work")
         ctk.CTkOptionMenu(add_win, values=["Work", "Personal", "Wifi"], variable=cat_var).pack(pady=10)
 
-        def save():
+        def save_password_entry():
             cursor = self.db_conn.cursor()
             cursor.execute('INSERT INTO vault (service, username, password, category) VALUES (?, ?, ?, ?)',
                           (service_in.get(), user_in.get(), pass_in.get(), cat_var.get()))
@@ -328,7 +283,7 @@ class SecVaultApp(ctk.CTk):
             add_win.destroy()
             self.load_vault_data("All")
 
-        ctk.CTkButton(add_win, text="Save", command=save, fg_color="#28a745").pack(pady=20)
+        ctk.CTkButton(add_win, text="Save", command=save_password_entry, fg_color="#28a745").pack(pady=20)
 
 if __name__ == "__main__":
     app = SecVaultApp()

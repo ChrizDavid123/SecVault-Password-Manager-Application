@@ -9,7 +9,7 @@ from pathlib import Path
 from sqlcipher3 import dbapi2 as sqlite
 from tabulate import tabulate
 from datetime import datetime
-from authentication import verify_key, set_master_password
+from authentication import store_key
 
 def initialize_database(key):
     """Initializes and returns the connection to the encrypted database."""
@@ -119,8 +119,8 @@ def show_logs_table(conn):
     print("\n---------- SECURITY ACCESS LOGS ----------")
     print(tabulate(rows, headers=headers, tablefmt="fancy_grid"))
 
-def change_key(conn):
-    key = set_master_password()
+def change_key(conn, password):
+    key = store_key(password)
     cursor = conn.cursor()
     # Change PRAGMA key
     cursor.execute(f"PRAGMA rekey = \"x'{key.hex()}'\";")

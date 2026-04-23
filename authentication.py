@@ -19,8 +19,9 @@ def derive_key(password, salt):
 
 
 # Store key in auth_store.json
-def store_key(password, salt):
+def store_key(password):
     # Derive key from master password
+    salt = token_bytes(32)
     key = derive_key(password, salt)
 
     # Check if there is data in auth_store.json
@@ -51,8 +52,7 @@ def verify_key(entered_password):
         print("Uh oh! Masterpassword is wrong") # Add to GUI as error popup
 
 
-# Set master password
-def set_master_password():
-    password = input("Create a master password: ").strip()
-    key = store_key(password, salt=token_bytes(32))
-    return key
+# # Set master password (DEPRECATED)
+# def set_master_password(password):
+#     key = store_key(password, salt=token_bytes(32))
+#     return key

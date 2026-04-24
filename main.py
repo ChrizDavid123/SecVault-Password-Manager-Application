@@ -92,6 +92,7 @@ class SecVaultApp(ctk.CTk):
                 self.setup_error.configure(text="Passwords do not match!")
                 return
 
+            authentication.store_key(p1)
             messagebox.showinfo("Success", "Master password set!")
             self.show_lock_window()
 

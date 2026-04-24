@@ -332,12 +332,6 @@ class SecVaultApp(ctk.CTk):
         add_win.geometry("400x500")
         add_win.attributes("-topmost", True)
 
-        icon_path = os.path.join(os.path.dirname(__file__), "AppLogo.png")
-        def apply_popup_icon():
-            img = tk.PhotoImage(file=icon_path)
-            add_win.iconphoto(False, img)
-        add_win.after(200, apply_popup_icon)
-
         ctk.CTkLabel(add_win, text="Add New Credential", font=("Arial", 18, "bold")).pack(pady=20)
         service_in = ctk.CTkEntry(add_win, placeholder_text="Service", width=250)
         service_in.pack(pady=10)

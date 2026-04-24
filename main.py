@@ -284,8 +284,17 @@ class SecVaultApp(ctk.CTk):
 
         def save_password_entry():
             cursor = self.db_conn.cursor()
-            cursor.execute('INSERT INTO vault (service, username, password, category) VALUES (?, ?, ?, ?)',
-                          (service_in.get(), user_in.get(), pass_in.get(), cat_var.get()))
+            cursor.execute("SELECT CategoryID FROM Category WHERE Name = ?", (cat_var.get(),))
+            cat_id = cursor.fetchone()[0]
+
+            cursor.execute('''
+                INSERT INTO Vault_Entry (Service, Username, Password, CategoryID) 
+                VALUES (?, ?, ?, ?)
+            ''', (service_in.get(), user_in.get(), pass_in.get(), cat_id))
+
+            new_id = cursor.lastrowid
+            database.log_vault_action(self.db_conn, new_id, "ADD_ENTRY")
+
             self.db_conn.commit()
             add_win.destroy()
             self.load_vault_data("All")

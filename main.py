@@ -200,12 +200,16 @@ class SecVaultApp(ctk.CTk):
         try:
             self.current_user_key = authentication.verify_key(pwd)
             if self.current_user_key:
-                self.db_conn = database.initialize_database(self.current_user_key)
+                conn = database.initialize_database(self.current_user_key)
+                if conn is None:
+                    messagebox.showerror("Error", "Encryption Key Mismatch / Database Corrupted")
+                    return # Stop here! Don't try to show main window
+                
+                self.db_conn = conn
                 self.show_main_window()
             else:
                 messagebox.showerror("Access Denied", "Incorrect Master Password")
         except Exception as e:
-            # This is where the auth_store.json error used to happen
             messagebox.showerror("Error", f"Login failed: {e}")
 
     # --- SCREEN 2: MAIN WINDOW (The Vault) ---
@@ -305,7 +309,7 @@ class SecVaultApp(ctk.CTk):
             new_p = simpledialog.askstring("Update", f"New password for {data[1]}:")
             if new_p:
                 cursor = self.db_conn.cursor()
-                cursor.execute("UPDATE vault SET password = ? WHERE id = ?", (new_p, data[0]))
+                cursor.execute("UPDATE Vault_Entry SET Password = ? WHERE EntryID = ?", (new_p, data[0]))
                 self.db_conn.commit()
                 opt_win.destroy()
                 self.load_vault_data("All")
@@ -352,15 +356,59 @@ class SecVaultApp(ctk.CTk):
         ctk.CTkOptionMenu(add_win, values=["Work", "Personal", "Wifi"], variable=cat_var).pack(pady=10)
 
         def save():
+            if not self.db_conn:
+                messagebox.showerror("Error", "Database not connected!")
+                return
+            
             cursor = self.db_conn.cursor()
-            cursor.execute('INSERT INTO vault (service, username, password, category) VALUES (?, ?, ?, ?)',
-                          (service_in.get(), user_in.get(), pass_in.get(), cat_var.get()))
-            self.db_conn.commit()
-            add_win.destroy()
-            self.load_vault_data("All")
+            try:
+                # Use the correct table name (Vault_Entry) and lookup the CategoryID
+                query = '''
+                    INSERT INTO Vault_Entry (Service, Username, Password, CategoryID) 
+                    VALUES (?, ?, ?, (SELECT CategoryID FROM Category WHERE Name = ?))
+                '''
+                cursor.execute(query, (service_in.get(), user_in.get(), pass_in.get(), cat_var.get()))
+                self.db_conn.commit()
+
+                entry_id = cursor.lastrowid
+                database.log_vault_action(self.db_conn, entry_id, "ADD_ENTRY")
+                
+                add_win.destroy()
+                self.load_vault_data("All")
+            except Exception as e:
+                messagebox.showerror("Database Error", f"Could not save: {e}")
 
         ctk.CTkButton(add_win, text="Save", command=save, fg_color="#28a745").pack(pady=20)
+
+        # Add this inside the SecVaultApp class in main.py
+    def load_vault_data(self, category="All"):
+        # Clear the current list
+        for widget in self.scroll_frame.winfo_children():
+            widget.destroy()
+
+        if not self.db_conn:
+            return
+
+        cursor = self.db_conn.cursor()
+        
+        # Pull data from Vault_Entry (matching database.py)
+        if category == "All":
+            cursor.execute("SELECT EntryID, Service, Username, Password FROM Vault_Entry")
+        else:
+            # Join with Category table to filter by name
+            query = '''
+                SELECT v.EntryID, v.Service, v.Username, v.Password 
+                FROM Vault_Entry v
+                JOIN Category c ON v.CategoryID = c.CategoryID
+                WHERE c.Name = ?
+            '''
+            cursor.execute(query, (category,))
+            
+        rows = cursor.fetchall()
+        for row in rows:
+            self.create_password_row(row)
 
 if __name__ == "__main__":
     app = SecVaultApp()
     app.mainloop()
+

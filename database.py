@@ -14,7 +14,7 @@ def initialize_database(key):
         conn = sqlite.connect('SecVault.db')
         cursor = conn.cursor()
         
-        # Set the encryption key
+        # Set the encryption keys
         cursor.execute(f"PRAGMA key = \"x'{key.hex()}'\";")
 
         # 1. TABLE: Category (Lookup table)

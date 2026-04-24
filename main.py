@@ -222,7 +222,7 @@ class SecVaultApp(ctk.CTk):
         self.sidebar.pack_propagate(False)
 
         # Categories
-        for cat in ["All", "Work", "Personal", "Wifi"]:
+        for cat in ["All", "Work", "Personal", "WiFi"]:
             # Highlight 'All' by default to match design
             bg = "#4a6291" if cat == "All" else "black"
             btn = ctk.CTkButton(self.sidebar, text=cat, fg_color=bg, text_color="white",
@@ -353,7 +353,7 @@ class SecVaultApp(ctk.CTk):
 
         ctk.CTkButton(add_win, text="Generate Strong Password", command=gen, fg_color="gray").pack(pady=5)
         cat_var = ctk.StringVar(value="Work")
-        ctk.CTkOptionMenu(add_win, values=["Work", "Personal", "Wifi"], variable=cat_var).pack(pady=10)
+        ctk.CTkOptionMenu(add_win, values=["Work", "Personal", "WiFi"], variable=cat_var).pack(pady=10)
 
         def save():
             if not self.db_conn:

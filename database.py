@@ -14,7 +14,7 @@ def initialize_database(key):
         conn = sqlite.connect('SecVault.db')
         cursor = conn.cursor()
         
-        # Set the encryption key
+        # Set the encryption keys
         cursor.execute(f"PRAGMA key = \"x'{key.hex()}'\";")
 
         # 1. TABLE: Category (Lookup table)
@@ -124,19 +124,3 @@ def show_auth_logs(conn):
     cursor.execute(query)
     rows = cursor.fetchall()
     print(tabulate(rows, headers=["ID", "Action", "Time"], tablefmt="fancy_grid"))
-
-def load_vault_data(self, category_name="All"):
-    cursor = self.db_conn.cursor()
-    if category_name == "All":
-        cursor.execute('''
-            SELECT v.EntryID, v.Service, v.Username, v.Password, c.Name 
-            FROM VaultEntry v
-            JOIN Category c ON v.CategoryID = c.CategoryID
-        ''')
-    else:
-        cursor.execute('''
-            SELECT v.EntryID, v.Service, v.Username, v.Password, c.Name 
-            FROM VaultEntry v
-            JOIN Category c ON v.CategoryID = c.CategoryID
-            WHERE c.Name = ?
-        ''', (category_name,))

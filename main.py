@@ -355,9 +355,18 @@ class SecVaultApp(ctk.CTk):
             cursor = self.db_conn.cursor()
             cursor.execute('INSERT INTO vault (service, username, password, category) VALUES (?, ?, ?, ?)',
                           (service_in.get(), user_in.get(), pass_in.get(), cat_var.get()))
+            cursor.execute("SELECT CategoryID FROM Category WHERE Name = ?", (cat_var.get(),))
+            cat_id = cursor.fetchone()[0]
+
+            cursor.execute('''
+                INSERT INTO VaultEntry (Service, Username, Password, CategoryID) 
+                VALUES (?, ?, ?, ?)
+            ''', (service_in.get(), user_in.get(), pass_in.get(), cat_id))
             self.db_conn.commit()
             add_win.destroy()
             self.load_vault_data("All")
+
+
 
         ctk.CTkButton(add_win, text="Save", command=save, fg_color="#28a745").pack(pady=20)
 

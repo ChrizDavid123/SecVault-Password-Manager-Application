@@ -19,6 +19,7 @@ class SecVaultApp(ctk.CTk):
 
         self.title("SecVault")
         self.geometry("1100x700")
+        self.resizable(0, 0)
         
         icon_path = os.path.join(os.path.dirname(__file__), "AppLogo.png")
         try:

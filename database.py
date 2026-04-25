@@ -100,6 +100,7 @@ def log_auth_event(conn, event_name):
     event_id = cursor.fetchone()[0]
     
     cursor.execute("INSERT INTO Authentication_Log (EventID, Timestamp) VALUES (?, ?)", (event_id, now))
+    print(f"{event_id} | Timestamp: {now}") # Testing
     conn.commit()
 
 def log_vault_action(conn, entry_id, event_name):
@@ -111,6 +112,7 @@ def log_vault_action(conn, entry_id, event_name):
     
     cursor.execute("INSERT INTO Vault_Log (EntryID, EventID, Timestamp) VALUES (?, ?, ?)", 
                    (entry_id, event_id, now))
+    print(f"{event_id} at {entry_id} | Timestamp: {now}") # Testing
     conn.commit()
 
 def show_auth_logs(conn):

@@ -45,14 +45,7 @@ def verify_key(entered_password):
     candidate_key = derive_key(entered_password, b64decode(data["salt"])) # Derive entered password
 
     # Compare candidate key derived from entered password against stored hash (the master password set by the user)
-    try:
-        compare_digest(candidate_key, b64decode(data["hash"]))
+    if not compare_digest(candidate_key, b64decode(data["hash"])):
+        raise ValueError("Entered master password is wrong!")
+    else:
         return candidate_key
-    except ValueError:
-        print("Uh oh! Masterpassword is wrong") # Add to GUI as error popup
-
-
-# # Set master password (DEPRECATED)
-# def set_master_password(password):
-#     key = store_key(password, salt=token_bytes(32))
-#     return key

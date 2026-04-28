@@ -36,9 +36,8 @@ class SecVaultApp(ctk.CTk):
         self.resizable(0, 0)
         self.configure(fg_color=BG_OUTER)
 
+        # Set database connection to None
         self.db_conn = None
-        # self.current_user_key = None
-        # self.current_master_password = "" -> This is a critical security vulnerability. Master password should NOT be stored in plaintext
 
         icon_path = os.path.join(os.path.dirname(__file__), "AppLogo.png")
         self.after(200, lambda: self._apply_icon(icon_path))
@@ -208,31 +207,9 @@ class SecVaultApp(ctk.CTk):
         link.bind("<Button-1>", lambda _: self.show_first_time_setup())
 
     def handle_login(self):
-        # DEPRECATED
-
-        # pwd = self.pw_entry.get()
-        # if not pwd:
-        #     messagebox.showwarning("Input Error", "Please enter your master password.")
-        #     return
-        # try:
-        #     key = authentication.verify_key(pwd)
-        #     if key:
-        #         conn = database.access_database(key)
-        #         if conn is None:
-        #             messagebox.showerror("Error", "Encryption Key Mismatch / Database Corrupted")
-        #             return
-        #         self.db_conn = conn
-        #         # self.current_master_password = pwd
-        #         self.show_main_window()
-        #     else:
-        #         messagebox.showerror("Access Denied", "Incorrect Master Password")
-        # except Exception as e:
-        #     messagebox.showerror("Error", f"Login failed: {e}")
-
         password = self.pw_entry.get()
         if not password or not password.strip():
             messagebox.showwarning("Input Error", "Please enter your master password.")
-        
         try:
             key = authentication.verify_key(password)
             conn = database.access_database(key)
@@ -481,49 +458,49 @@ class SecVaultApp(ctk.CTk):
             opt_frame = ctk.CTkFrame(opt, fg_color=BG_POPUP, corner_radius=14)
             opt_frame.pack(fill="both", expand=True, padx=8, pady=8)
 
-            def change_master():
-                new_pw = simpledialog.askstring("Change Password",
-                                               "Enter new master password:",
-                                               show="*", parent=win)
-                if new_pw:
-                    # if len(new_pw):
-                    #     messagebox.showwarning("Too Short",
-                    #                            "Must be at least 8 characters!", parent=win)
-                    #     return
-                    authentication.store_key(new_pw)
-                    self.current_master_password = new_pw
-                    messagebox.showinfo("Success", "Master password updated!", parent=win)
-                    opt.destroy()
+        # def change_master():
+        #     new_pw = simpledialog.askstring("Change Password",
+        #                                     "Enter new master password:",
+        #                                     show="*", parent=win)
+        #     if new_pw:
+        #         # if len(new_pw):
+        #         #     messagebox.showwarning("Too Short",
+        #         #                            "Must be at least 8 characters!", parent=win)
+        #         #     return
+        #         authentication.store_key(new_pw)
+        #         self.current_master_password = new_pw
+        #         messagebox.showinfo("Success", "Master password updated!", parent=win)
+        #         opt.destroy()
 
-            def delete_account():
-                if messagebox.askyesno("Confirm Delete",
-                                       "Delete ALL data permanently?", parent=win):
-                    
-                    with open("auth_store.json", "w") as f:
-                        json.dump({}, f)
-                    # if self.db_conn:
-                    #     self.db_conn.close()
+        def delete_account():
+            if messagebox.askyesno("Confirm Delete",
+                                    "Delete ALL data permanently?", parent=win):
+                
+                with open("auth_store.json", "w") as f:
+                    json.dump({}, f)
+                # if self.db_conn:
+                #     self.db_conn.close()
 
-                    # Delete database
-                    database.delete_vault(self.db_conn)
+                # Delete database
+                database.delete_vault(self.db_conn)
 
-                    opt.destroy()
-                    win.destroy()
+                # opt.destroy()
+                win.destroy()
 
-                    # Show first time setup window
-                    self.show_first_time_setup()
+                # Show first time setup window
+                self.show_first_time_setup()
 
-            ctk.CTkButton(opt_frame, text="Change / Update",
-                          fg_color=BTN_IDLE, text_color=TEXT_LIGHT,
-                          hover_color=BTN_HOVER, corner_radius=16,
-                          height=36, font=("Helvetica", 13, "bold"),
-                          command=change_master).pack(pady=(18, 8), padx=16, fill="x")
+            # ctk.CTkButton(opt_frame, text="Change / Update",
+            #               fg_color=BTN_IDLE, text_color=TEXT_LIGHT,
+            #               hover_color=BTN_HOVER, corner_radius=16,
+            #               height=36, font=("Helvetica", 13, "bold"),
+            #               command=change_master).pack(pady=(18, 8), padx=16, fill="x")
 
-            ctk.CTkButton(opt_frame, text="Delete",
-                          fg_color=BTN_IDLE, text_color=TEXT_LIGHT,
-                          hover_color=RED_BTN, corner_radius=16,
-                          height=36, font=("Helvetica", 13, "bold"),
-                          command=delete_account).pack(pady=(0, 8), padx=16, fill="x")
+            # ctk.CTkButton(opt_frame, text="Delete",
+            #               fg_color=BTN_IDLE, text_color=TEXT_LIGHT,
+            #               hover_color=RED_BTN, corner_radius=16,
+            #               height=36, font=("Helvetica", 13, "bold"),
+            #               command=delete_account).pack(pady=(0, 8), padx=16, fill="x")
 
         ctk.CTkButton(pw_row, text="⋮", width=24, fg_color="transparent",
                       text_color=TEXT_DARK, font=("Arial", 20),
@@ -536,9 +513,7 @@ class SecVaultApp(ctk.CTk):
                       hover_color=RED_BTN, corner_radius=18,
                       width=160, height=40,
                       font=("Helvetica", 13, "bold"),
-                      command=lambda: messagebox.askyesno(
-                          "Confirm", "Delete account? This cannot be undone."
-                      )).pack(pady=(70, 6))
+                      command=delete_account).pack(pady=(70, 6))
 
         ctk.CTkLabel(main_frame,
                      text="Note: Are you sure you want to delete the account?\n"

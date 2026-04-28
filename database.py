@@ -74,6 +74,8 @@ def initialize_database(key):
 
     conn.commit()
 
+    return conn
+
 def access_database(key):
     try:
         conn = sqlite.connect('SecVault.db')

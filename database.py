@@ -1,5 +1,5 @@
 from sqlcipher3 import dbapi2 as sqlite
-# from tabulate import tabulate
+from tabulate import tabulate
 from datetime import datetime
 from pathlib import Path
 from secrets import token_bytes
@@ -71,10 +71,15 @@ def initialize_database(key):
             FOREIGN KEY (EventID) REFERENCES Event_Type(EventID)
         )
     ''')
-
+    
     conn.commit()
 
+    # Log event
+    log_auth_event(conn, "LOGIN")
+
+    # Returns connection
     return conn
+
 
 def access_database(key):
     try:
@@ -121,9 +126,14 @@ def show_auth_logs(conn):
         JOIN Event_Type e ON a.EventID = e.EventID
     '''
     cursor.execute(query)
-    # rows = cursor.fetchall()
-    # print(tabulate(rows, headers=["ID", "Action", "Time"], tablefmt="fancy_grid"))
+    rows = cursor.fetchall()
+    print(tabulate(rows, headers=["ID", "Action", "Time"], tablefmt="fancy_grid"))
 
+
+# Change database encryption key
+def change_key(conn, new_key):
+    conn.execute(f"PRAGMA rekey = \"x'{new_key.hex()}'\";")
+    conn.close()
 
 
 def delete_vault(conn):

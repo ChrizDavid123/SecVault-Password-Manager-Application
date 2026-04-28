@@ -3,7 +3,6 @@ from base64 import b64encode, b64decode
 from secrets import compare_digest, token_bytes
 from pathlib import Path
 from argon2.low_level import hash_secret_raw, Type
-from database import access_database, initialize_database
 
 
 # Salt and hash values are stored here for verification

@@ -7,6 +7,7 @@ from PIL import Image
 import database
 import authentication
 import passforge
+import json
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
@@ -35,9 +36,9 @@ class SecVaultApp(ctk.CTk):
         self.resizable(0, 0)
         self.configure(fg_color=BG_OUTER)
 
-        self.db_conn             = None
-        self.current_user_key    = None
-        self.current_master_password = ""
+        self.db_conn = None
+        # self.current_user_key = None
+        # self.current_master_password = "" -> This is a critical security vulnerability. Master password should NOT be stored in plaintext
 
         icon_path = os.path.join(os.path.dirname(__file__), "AppLogo.png")
         self.after(200, lambda: self._apply_icon(icon_path))
@@ -139,15 +140,18 @@ class SecVaultApp(ctk.CTk):
 
         def save_master():
             p1, p2 = self.new_pw.get(), self.confirm_pw.get()
-            if len(p1) < 8:
-                self.setup_error.configure(text="Password must be at least 8 characters!")
-                return
+            # if len(p1) < 8:
+            #     self.setup_error.configure(text="Password must be at least 8 characters!")
+            #     return
             if p1 != p2:
                 self.setup_error.configure(text="Passwords do not match!")
                 return
-            authentication.store_key(p1)
+            key = authentication.store_key(p1)
+            self.db_conn = database.initialize_database(key)
             messagebox.showinfo("Success", "Master password set!")
-            self.show_lock_window()
+
+            # Redirect to main window after create master password
+            self.main_window()
 
         ctk.CTkButton(card, text="Save", corner_radius=20, width=140, height=38,
                       fg_color=BLUE_BTN, hover_color=BTN_HOVER,
@@ -201,30 +205,45 @@ class SecVaultApp(ctk.CTk):
                             font=("Helvetica", 11, "underline"),
                             cursor="hand2", text_color="#1a4a7a")
         link.pack(pady=4)
-        link.bind("<Button-1>", lambda e: self.show_first_time_setup())
+        link.bind("<Button-1>", lambda _: self.show_first_time_setup())
 
     def handle_login(self):
-        pwd = self.pw_entry.get()
-        if not pwd:
+        # DEPRECATED
+
+        # pwd = self.pw_entry.get()
+        # if not pwd:
+        #     messagebox.showwarning("Input Error", "Please enter your master password.")
+        #     return
+        # try:
+        #     key = authentication.verify_key(pwd)
+        #     if key:
+        #         conn = database.access_database(key)
+        #         if conn is None:
+        #             messagebox.showerror("Error", "Encryption Key Mismatch / Database Corrupted")
+        #             return
+        #         self.db_conn = conn
+        #         # self.current_master_password = pwd
+        #         self.show_main_window()
+        #     else:
+        #         messagebox.showerror("Access Denied", "Incorrect Master Password")
+        # except Exception as e:
+        #     messagebox.showerror("Error", f"Login failed: {e}")
+
+        password = self.pw_entry.get()
+        if not password or not password.strip():
             messagebox.showwarning("Input Error", "Please enter your master password.")
-            return
+        
         try:
-            self.current_user_key = authentication.verify_key(pwd)
-            if self.current_user_key:
-                conn = database.initialize_database(self.current_user_key)
-                if conn is None:
-                    messagebox.showerror("Error", "Encryption Key Mismatch / Database Corrupted")
-                    return
-                self.db_conn = conn
-                self.current_master_password = pwd
-                self.show_main_window()
-            else:
-                messagebox.showerror("Access Denied", "Incorrect Master Password")
-        except Exception as e:
-            messagebox.showerror("Error", f"Login failed: {e}")
+            key = authentication.verify_key(password)
+            conn = database.access_database(key)
+
+            self.db_conn = conn
+            self.main_window()
+        except Exception:
+            messagebox.showerror("Error", "Master password is invalid!")
 
     # ── MAIN WINDOW ───────────────────────────────────────────────────────────
-    def show_main_window(self):
+    def main_window(self):
         self.clear_screen()
 
         # ── Sidebar ──────────────────────────────────────────────────────────
@@ -432,22 +451,23 @@ class SecVaultApp(ctk.CTk):
 
         pw_display = ctk.CTkEntry(pw_cont, show="*", border_width=0,
                                   fg_color=WHITE, text_color=TEXT_DARK, width=230)
-        pw_display.insert(0, self.current_master_password)
+        
+        # pw_display.insert(0, self.current_master_password) This is a fatal security vulnerability
         pw_display.configure(state="readonly")
         pw_display.pack(side="left", padx=(10, 0), fill="x", expand=True)
 
-        def toggle_pw():
-            if pw_display.cget("show") == "*":
-                pw_display.configure(show="")
-                eye_btn.configure(text="🔒")
-            else:
-                pw_display.configure(show="*")
-                eye_btn.configure(text="👁️")
+        # def toggle_pw():
+        #     if pw_display.cget("show") == "*":
+        #         pw_display.configure(show="")
+        #         eye_btn.configure(text="🔒")
+        #     else:
+        #         pw_display.configure(show="*")
+        #         eye_btn.configure(text="👁️")
 
-        eye_btn = ctk.CTkButton(pw_cont, text="👁️", width=26, height=26,
-                                fg_color="transparent", text_color="#318ba2",
-                                font=("Arial", 13), hover_color="#eaf4ff" ,command=toggle_pw)
-        eye_btn.pack(side="right", padx=4)
+        # eye_btn = ctk.CTkButton(pw_cont, text="👁️", width=26, height=26,
+        #                         fg_color="transparent", text_color="#318ba2",
+        #                         font=("Arial", 13), hover_color="#eaf4ff" ,command=toggle_pw)
+        # eye_btn.pack(side="right", padx=4)
 
         # Three dots → change/delete popup
         def show_pw_options():
@@ -466,10 +486,10 @@ class SecVaultApp(ctk.CTk):
                                                "Enter new master password:",
                                                show="*", parent=win)
                 if new_pw:
-                    if len(new_pw) < 8:
-                        messagebox.showwarning("Too Short",
-                                               "Must be at least 8 characters!", parent=win)
-                        return
+                    # if len(new_pw):
+                    #     messagebox.showwarning("Too Short",
+                    #                            "Must be at least 8 characters!", parent=win)
+                    #     return
                     authentication.store_key(new_pw)
                     self.current_master_password = new_pw
                     messagebox.showinfo("Success", "Master password updated!", parent=win)
@@ -478,17 +498,19 @@ class SecVaultApp(ctk.CTk):
             def delete_account():
                 if messagebox.askyesno("Confirm Delete",
                                        "Delete ALL data permanently?", parent=win):
-                    import json
+                    
                     with open("auth_store.json", "w") as f:
                         json.dump({}, f)
-                    if self.db_conn:
-                        self.db_conn.close()
-                    try:
-                        os.remove("vault.db")
-                    except Exception:
-                        pass
+                    # if self.db_conn:
+                    #     self.db_conn.close()
+
+                    # Delete database
+                    database.delete_vault(self.db_conn)
+
                     opt.destroy()
                     win.destroy()
+
+                    # Show first time setup window
                     self.show_first_time_setup()
 
             ctk.CTkButton(opt_frame, text="Change / Update",

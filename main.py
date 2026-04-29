@@ -41,7 +41,8 @@ class SecVaultApp(ctk.CTk):
         icon_path = os.path.join(os.path.dirname(__file__), "AppLogo.png")
         self.after(200, lambda: self._apply_icon(icon_path))
 
-    # ── helpers ───────────────────────────────────────────────────────────────
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
     def _apply_icon(self, path):
         try:
             img = tk.PhotoImage(file=path)
@@ -73,6 +74,7 @@ class SecVaultApp(ctk.CTk):
     def clear_screen(self):
         for w in self.main_container.winfo_children():
             w.destroy()
+
 
     # ── SETUP SCREEN ──────────────────────────────────────────────────────────
     def show_first_time_setup(self):
@@ -106,22 +108,24 @@ class SecVaultApp(ctk.CTk):
         c1, self.new_pw     = _field_row(card, "Make Password")
         c2, self.confirm_pw = _field_row(card, "Confirm Password")
 
-        # Eye buttons
+        # Password visibility toggle buttons
         for container, entry in [(c1, self.new_pw), (c2, self.confirm_pw)]:
-            e = entry
-            def _toggle(en=e, btn_ref=[None]):
+            def _toggle(en=entry, btn_ref=[None]):
                 if en.cget("show") == "*":
                     en.configure(show="")
                     if btn_ref[0]: btn_ref[0].configure(text="Hide")
                 else:
                     en.configure(show="*")
                     if btn_ref[0]: btn_ref[0].configure(text="Show")
-            b = ctk.CTkButton(container, text="Show", width=30, height=30,
+
+            # Toggle button
+            toggle_button = ctk.CTkButton(container, text="Show", width=30, height=30,
                               fg_color="transparent", text_color="#318ba2",
-                              font=("Arial", 16), command=_toggle)
-            b.pack(side="right", padx=4)
+                              font=("Arial", 12), command=_toggle)
+            toggle_button.pack(side="right", padx=4)
+
             # Wire the button reference so toggle can update it
-            def _make_toggle(en, btn):
+            def _toggle_password_visibility(en, btn):
                 def _t():
                     if en.cget("show") == "*":
                         en.configure(show="")
@@ -130,22 +134,24 @@ class SecVaultApp(ctk.CTk):
                         en.configure(show="*")
                         btn.configure(text="Show")
                 return _t
-            b.configure(command=_make_toggle(e, b))
+            
+            toggle_button.configure(command=_toggle_password_visibility(entry, toggle_button))
 
         self.setup_error = ctk.CTkLabel(card, text="", text_color=RED_BTN,
                                         font=("Helvetica", 11))
         self.setup_error.pack(pady=(6, 0))
 
-        def save_master():
-            p1, p2 = self.new_pw.get(), self.confirm_pw.get()
-            if len(p1) < 8:
+        def save_master_password():
+            __password, __password_confirm = self.new_pw.get(), self.confirm_pw.get()
+            if len(__password) < 8:
                 self.setup_error.configure(text="Password must be at least 8 characters!")
                 return
-            if p1 != p2:
+            if __password != __password_confirm:
                 self.setup_error.configure(text="Passwords do not match!")
                 return
-            key = authentication.store_key(p1)
-            self.db_conn = database.initialize_database(key)
+            
+            __key = authentication.store_key(__password) # Store key (hash) and salt into auth_store.json file
+            self.db_conn = database.initialize_database(__key) # Create database
             messagebox.showinfo("Success", "Master password set!")
 
             # Redirect to main window after create master password
@@ -153,7 +159,8 @@ class SecVaultApp(ctk.CTk):
 
         ctk.CTkButton(card, text="Save", corner_radius=20, width=140, height=38,
                       fg_color=BLUE_BTN, hover_color=BTN_HOVER,
-                      font=("Helvetica", 14, "bold"), command=save_master).pack(pady=16)
+                      font=("Helvetica", 14, "bold"), command=save_master_password).pack(pady=16)
+
 
     # ── LOCK WINDOW ───────────────────────────────────────────────────────────
     def show_lock_window(self):
@@ -176,48 +183,44 @@ class SecVaultApp(ctk.CTk):
         entry_row.pack_propagate(False)
         entry_row.pack(pady=4)
 
-        self.pw_entry = ctk.CTkEntry(entry_row, placeholder_text="Enter Key", show="*",
+        self.password_entry = ctk.CTkEntry(entry_row, placeholder_text="Enter Key", show="*",
                                      height=40, border_width=0, fg_color=WHITE, text_color=TEXT_DARK)
-        self.pw_entry.pack(side="left", padx=(14, 0), fill="x", expand=True)
+        self.password_entry.pack(side="left", padx=(14, 0), fill="x", expand=True)
 
-        def toggle_pw():
-            if self.pw_entry.cget("show") == "*":
-                self.pw_entry.configure(show="")
-                eye_btn.configure(text="Hide")
+        def _toggle_password_visibility():
+            if self.password_entry.cget("show") == "*":
+                self.password_entry.configure(show="")
+                toggle_button.configure(text="Hide")
             else:
-                self.pw_entry.configure(show="*")
-                eye_btn.configure(text="Show")
+                self.password_entry.configure(show="*")
+                toggle_button.configure(text="Show")
 
-        eye_btn = ctk.CTkButton(entry_row, text="Show", width=34, height=34,
+        toggle_button = ctk.CTkButton(entry_row, text="Show", width=34, height=34,
                                 corner_radius=17, fg_color="transparent",
                                 text_color="#318ba2", hover_color="#EEEEEE",
-                                font=("Arial", 14), command=toggle_pw)
-        eye_btn.pack(side="right", padx=6)
+                                font=("Arial", 12), command=_toggle_password_visibility)
+        toggle_button.pack(side="right", padx=6)
 
         ctk.CTkButton(card, text="Enter", corner_radius=14, width=120, height=36,
                       fg_color=BLUE_BTN, hover_color=BTN_HOVER,
                       font=("Helvetica", 13, "bold"),
                       command=self.handle_login).pack(pady=16)
 
-        link = ctk.CTkLabel(card, text="First Time?  Set Up Master Password",
-                            font=("Helvetica", 11, "underline"),
-                            cursor="hand2", text_color="#1a4a7a")
-        link.pack(pady=4)
-        link.bind("<Button-1>", lambda _: self.show_first_time_setup())
-
     def handle_login(self):
-        password = self.pw_entry.get()
-        if not password or not password.strip():
+        __password = self.password_entry.get()
+        if not __password or not __password.strip():
             messagebox.showwarning("Input Error", "Please enter your master password.")
             return
         try:
-            key = authentication.verify_key(password)
-            conn = database.access_database(key)
-
-            self.db_conn = conn
-            self.main_window()
+            __key = authentication.verify_key(__password)
+            __conn = database.access_database(__key)
         except Exception:
             messagebox.showerror("Error", "Master password is invalid!")
+            return
+        finally:
+            self.db_conn = __conn
+            self.main_window()
+
 
     # ── MAIN WINDOW ───────────────────────────────────────────────────────────
     def main_window(self):
@@ -257,12 +260,19 @@ class SecVaultApp(ctk.CTk):
                       hover_color=BTN_HOVER,
                       command=self.show_add_password_window).pack(pady=18)
 
+        # Closes database connection and locks vault
+        def lock_vault():
+            database.log_auth_event(self.db_conn, "LOGOUT")
+            self.db_conn.close()
+            self.show_lock_window()
+
         # Lock Vault (bottom)
         ctk.CTkButton(sidebar, text="↪  Lock Vault",
                       fg_color="transparent", text_color=TEXT_LIGHT,
                       font=("Helvetica", 13, "bold"),
                       hover_color=BTN_HOVER,
-                      command=self.show_lock_window).pack(side="bottom", pady=22)
+                      command=lock_vault).pack(side="bottom", pady=22)
+        
 
         # ── Content area ─────────────────────────────────────────────────────
         content = ctk.CTkFrame(self.main_container, fg_color=BG_PANEL, corner_radius=18)
@@ -298,6 +308,7 @@ class SecVaultApp(ctk.CTk):
 
         self.load_vault_data("All")
 
+
     # ── PASSWORD ROW ──────────────────────────────────────────────────────────
     # Cycle of accent colours for the service icon dot
     _ICON_COLORS = ["#4285F4", "#34A853", "#EA4335", "#FBBC05",
@@ -326,19 +337,19 @@ class SecVaultApp(ctk.CTk):
         pw_label.pack(side="left", padx=12, fill="x", expand=True)
 
         # View toggle
-        def toggle_view():
+        def _toggle_password_visibility():
             if "·" in pw_label.cget("text"):
                 pw_label.configure(text=f"{data[1]}   {data[3]}")
-                view_btn.configure(text="Hide")
+                toggle_button.configure(text="Hide")
             else:
                 pw_label.configure(text=masked)
-                view_btn.configure(text="Show")
+                toggle_button.configure(text="Show")
 
-        view_btn = ctk.CTkButton(bar, text="Show", width=26, height=26,
+        toggle_button = ctk.CTkButton(bar, text="Show", width=26, height=26,
                                  fg_color="transparent", text_color="#318ba2",
-                                 font=("Arial", 13), hover_color="#eaf4ff",
-                                 command=toggle_view)
-        view_btn.pack(side="right", padx=2)
+                                 font=("Arial", 12), hover_color="#eaf4ff",
+                                 command=_toggle_password_visibility)
+        toggle_button.pack(side="right", padx=2)
 
         # Copy to clipboard
         def copy_pw():
@@ -360,6 +371,7 @@ class SecVaultApp(ctk.CTk):
                       hover_color="#cce0f0",
                       command=lambda: self.show_options_menu(data)).pack(side="right")
 
+
     # ── OPTIONS MENU (Changes View) ───────────────────────────────────────────
     def show_options_menu(self, data):
         win = ctk.CTkToplevel(self)
@@ -372,7 +384,7 @@ class SecVaultApp(ctk.CTk):
         frame = ctk.CTkFrame(win, fg_color=BG_POPUP, corner_radius=14)
         frame.pack(fill="both", expand=True, padx=8, pady=8)
 
-        def update_p():
+        def update_password_entry():
             new_p = simpledialog.askstring("Update", f"New password for {data[1]}:", parent=win)
             if new_p:
                 cur = self.db_conn.cursor()
@@ -382,7 +394,7 @@ class SecVaultApp(ctk.CTk):
                 win.destroy()
                 self.load_vault_data("All")
 
-        def delete_p():
+        def delete_password_entry():
             if messagebox.askyesno("Confirm", "Delete this entry?", parent=win):
                 cur = self.db_conn.cursor()
                 cur.execute("DELETE FROM Vault_Entry WHERE EntryID = ?", (data[0],))
@@ -394,13 +406,14 @@ class SecVaultApp(ctk.CTk):
                       fg_color=BTN_IDLE, text_color=TEXT_LIGHT,
                       hover_color=BTN_HOVER, corner_radius=16,
                       height=36, font=("Helvetica", 13, "bold"),
-                      command=update_p).pack(pady=(18, 8), padx=18, fill="x")
+                      command=update_password_entry).pack(pady=(18, 8), padx=18, fill="x")
 
         ctk.CTkButton(frame, text="Delete",
                       fg_color=BTN_IDLE, text_color=TEXT_LIGHT,
                       hover_color=RED_BTN, corner_radius=16,
                       height=36, font=("Helvetica", 13, "bold"),
-                      command=delete_p).pack(pady=(0, 8), padx=18, fill="x")
+                      command=delete_password_entry).pack(pady=(0, 8), padx=18, fill="x")
+
 
     # ── SETTINGS WINDOW ───────────────────────────────────────────────────────
     def show_settings_window(self):
@@ -435,8 +448,7 @@ class SecVaultApp(ctk.CTk):
 
             # Show-hide buttons
             for container, entry in [(c1, self.new_pw), (c2, self.confirm_pw)]:
-                e = entry
-                def _toggle(en=e, btn_ref=[None]):
+                def _toggle(en=entry, btn_ref=[None]):
                     if en.cget("show") == "*":
                         en.configure(show="")
                         if btn_ref[0]: btn_ref[0].configure(text="Hide")
@@ -445,10 +457,10 @@ class SecVaultApp(ctk.CTk):
                         if btn_ref[0]: btn_ref[0].configure(text="Show")
                 b = ctk.CTkButton(container, text="Show", width=30, height=30,
                                 fg_color="transparent", text_color="#318ba2",
-                                font=("Arial", 16), command=_toggle)
+                                font=("Arial", 12), command=_toggle)
                 b.pack(side="right", padx=4)
                 # Wire the button reference so toggle can update it
-                def _make_toggle(en, btn):
+                def _toggle_password_visibility(en, btn):
                     def _t():
                         if en.cget("show") == "*":
                             en.configure(show="")
@@ -457,7 +469,7 @@ class SecVaultApp(ctk.CTk):
                             en.configure(show="*")
                             btn.configure(text="Show")
                     return _t
-                b.configure(command=_make_toggle(e, b))
+                b.configure(command=_toggle_password_visibility(entry, b))
 
             self.setup_error = ctk.CTkLabel(main_frame, text="", text_color=RED_BTN,
                                             font=("Helvetica", 11))
@@ -521,6 +533,7 @@ class SecVaultApp(ctk.CTk):
                           "You won't be able to recover your data",
                      font=("Helvetica", 10), text_color="#555").pack()
 
+
     # ── ADD PASSWORD WINDOW ───────────────────────────────────────────────────
     def show_add_password_window(self):
         win = ctk.CTkToplevel(self)
@@ -539,24 +552,24 @@ class SecVaultApp(ctk.CTk):
                      text_color=TEXT_DARK).pack(pady=(20, 14))
 
         def _entry(placeholder):
-            e = ctk.CTkEntry(inner, placeholder_text=placeholder, width=280,
+            entry = ctk.CTkEntry(inner, placeholder_text=placeholder, width=280,
                              height=36, corner_radius=10,
                              fg_color=WHITE, border_width=0,
                              text_color=TEXT_DARK)
-            e.pack(pady=6)
-            return e
+            entry.pack(pady=6)
+            return entry
 
         service_in = _entry("Service")
         user_in    = _entry("Username")
         pass_in    = _entry("Password")
 
-        def gen():
+        def generate_password():
             new_p = passforge.password_generator()
             pass_in.delete(0, "end")
             pass_in.insert(0, new_p)
 
         ctk.CTkButton(inner, text="⚡  Generate Strong Password",
-                      command=gen, fg_color="#4a4a6a",
+                      command=generate_password, fg_color="#4a4a6a",
                       hover_color="#5a5a8a", corner_radius=14,
                       width=280, height=34,
                       font=("Helvetica", 12)).pack(pady=6)
@@ -590,6 +603,7 @@ class SecVaultApp(ctk.CTk):
                       hover_color="#1e7e34", corner_radius=16,
                       width=280, height=40,
                       font=("Helvetica", 14, "bold")).pack(pady=16)
+
 
     # ── LOAD VAULT DATA ───────────────────────────────────────────────────────
     def load_vault_data(self, category="All"):

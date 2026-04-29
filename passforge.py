@@ -15,15 +15,3 @@ def password_generator():
             break
 
     return password
-
-# Checks password strength using zxcvbn by Dropbox, a reputable third-party module
-def strength_checker(password):
-    result = zxcvbn(password)
-
-    match int(result['score']):
-        case 0 | 1:
-            print("Weak")
-        case 2 | 3:
-            print("Good")
-        case 4:
-            print("Strong")
